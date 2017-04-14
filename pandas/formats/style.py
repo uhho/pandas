@@ -777,7 +777,7 @@ class Styler(object):
         return self
 
     def background_gradient(self, cmap='PuBu', low=0, high=0, axis=0,
-                            subset=None):
+                            subset=None, alpha=1.0):
         """
         Color the background in a gradient according to
         the data in each column (optionally row).
@@ -795,6 +795,8 @@ class Styler(object):
             1 or 'columns' for columnwise, 0 or 'index' for rowwise
         subset: IndexSlice
             a valid slice for ``data`` to limit the style application to
+        alpha: float
+            colormap opacity
 
         Returns
         -------
@@ -810,11 +812,11 @@ class Styler(object):
         subset = _maybe_numeric_slice(self.data, subset)
         subset = _non_reducing_slice(subset)
         self.apply(self._background_gradient, cmap=cmap, subset=subset,
-                   axis=axis, low=low, high=high)
+                   axis=axis, low=low, high=high, alpha=alpha)
         return self
 
     @staticmethod
-    def _background_gradient(s, cmap='PuBu', low=0, high=0):
+    def _background_gradient(s, cmap='PuBu', low=0, high=0, alpha=1.0):
         """Color background in a range according to the data."""
         with _mpl(Styler.background_gradient) as (plt, colors):
             rng = s.max() - s.min()
@@ -824,8 +826,12 @@ class Styler(object):
             # matplotlib modifies inplace?
             # https://github.com/matplotlib/matplotlib/issues/5427
             normed = norm(s.values)
-            c = [colors.rgb2hex(x) for x in plt.cm.get_cmap(cmap)(normed)]
-            return ['background-color: %s' % color for color in c]
+            if alpha == 1.0:
+                c = [colors.rgb2hex(x) for x in plt.cm.get_cmap(cmap)(normed)]
+                return ['background-color: %s' % color for color in c]
+            else:
+                c = [','.join((x[:3] * 255).round().astype(str)) for x in plt.cm.get_cmap(cmap)(normed)]
+                return ['background-color: rgba(%s,%s)' % (color, alpha) for color in c]
 
     def set_properties(self, subset=None, **kwargs):
         """
